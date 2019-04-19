@@ -26,12 +26,14 @@ import io.opentracing.contrib.redis.common.TracingConfiguration;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.util.ThreadLocalScopeManager;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import redis.embedded.RedisCluster;
+import redis.embedded.RedisServer;
+import redis.embedded.cluster.RedisCluster;
 
 public class TracingLettuceClusterTest {
 
@@ -44,10 +46,13 @@ public class TracingLettuceClusterTest {
   public void before() {
     mockTracer.reset();
 
-    redisServer = RedisCluster.builder().ephemeral().sentinelCount(3).quorumSize(2)
-        .replicationGroup("master1", 1)
-        .replicationGroup("master2", 1)
-        .replicationGroup("master3", 1)
+    redisServer = new RedisCluster.Builder()
+        .withServerBuilder(
+            RedisServer.builder().setting("bind 127.0.0.1")
+        )
+        .serverPorts(Arrays.asList(42000,42001,42002,42003,42004,42005))
+        .numOfReplicates(1)
+        .numOfRetries(42)
         .build();
     redisServer.start();
   }
