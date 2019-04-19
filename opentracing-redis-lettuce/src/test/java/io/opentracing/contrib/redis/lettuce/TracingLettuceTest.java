@@ -20,6 +20,9 @@ import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
+import io.lettuce.core.cluster.RedisClusterClient;
+import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
+import io.lettuce.core.cluster.api.sync.RedisAdvancedClusterCommands;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.contrib.redis.common.TracingConfiguration;
@@ -123,4 +126,25 @@ public class TracingLettuceTest {
     List<MockSpan> spans = mockTracer.finishedSpans();
     assertEquals(2, spans.size());
   }
+
+  @Test
+  public void sync_cluster() {
+    RedisClusterClient client = RedisClusterClient.create("redis://localhost");
+
+    StatefulRedisClusterConnection<String, String> connection =
+        new TracingStatefulRedisClusterConnection<>(client.connect(),
+            new TracingConfiguration.Builder(mockTracer).build());
+    RedisAdvancedClusterCommands<String, String> commands = connection.sync();
+
+    assertEquals("OK", commands.set("key", "value"));
+    assertEquals("value", commands.get("key"));
+
+    connection.close();
+
+    client.shutdown();
+
+    List<MockSpan> spans = mockTracer.finishedSpans();
+    assertEquals(2, spans.size());
+  }
+
 }
