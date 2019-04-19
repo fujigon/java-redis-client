@@ -42,29 +42,38 @@ public class TracingLettuceClusterTest {
   private MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
       MockTracer.Propagator.TEXT_MAP);
 
-  private RedisCluster redisServer;
+  private RedisServer redisServer;
+
+  private RedisCluster redisCluster;
 
   @Before
   public void before() {
     mockTracer.reset();
 
-    redisServer = new RedisCluster.Builder()
-        .withServerBuilder(
-            RedisServer.builder()
-                .port(6379)
+    redisServer = RedisServer.builder().setting("bind 127.0.0.1")
+        .redisExecProvider(RedisExecProvider.build()
+            .override(OS.UNIX, "/usr/bin/redis-server"))
+        .build();
+    redisServer.start();
+
+    redisCluster = new RedisCluster.Builder()
+        .withServerBuilder(RedisServer.builder().setting("bind 127.0.0.1")
                 .redisExecProvider(RedisExecProvider.build()
                     .override(OS.UNIX, "/usr/bin/redis-server")))
         .serverPorts(Arrays.asList(42000, 42001, 42002, 42003, 42004, 42005))
         .numOfReplicates(1)
         .numOfRetries(42)
         .build();
-    redisServer.start();
+    redisCluster.start();
   }
 
   @After
   public void after() {
     if (redisServer != null) {
       redisServer.stop();
+    }
+    if (redisCluster != null) {
+      redisCluster.stop();
     }
   }
 
