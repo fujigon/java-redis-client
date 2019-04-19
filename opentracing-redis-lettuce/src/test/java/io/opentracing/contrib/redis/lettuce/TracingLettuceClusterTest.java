@@ -32,8 +32,10 @@ import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import redis.embedded.RedisExecProvider;
 import redis.embedded.RedisServer;
 import redis.embedded.cluster.RedisCluster;
+import redis.embedded.util.OS;
 
 public class TracingLettuceClusterTest {
 
@@ -49,7 +51,9 @@ public class TracingLettuceClusterTest {
     redisServer = new RedisCluster.Builder()
         .withServerBuilder(
             RedisServer.builder().setting("bind 127.0.0.1")
-        )
+            .redisExecProvider(RedisExecProvider.build()
+                .override(OS.UNIX, "redis-server")
+                .override(OS.MAC_OS_X, "redis-server")))
         .serverPorts(Arrays.asList(42000,42001,42002,42003,42004,42005))
         .numOfReplicates(1)
         .numOfRetries(42)

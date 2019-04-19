@@ -31,7 +31,9 @@ import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import redis.embedded.RedisExecProvider;
 import redis.embedded.RedisServer;
+import redis.embedded.util.OS;
 
 public class TracingLettuceTest {
 
@@ -44,7 +46,11 @@ public class TracingLettuceTest {
   public void before() {
     mockTracer.reset();
 
-    redisServer = RedisServer.builder().setting("bind 127.0.0.1").build();
+    redisServer = RedisServer.builder().setting("bind 127.0.0.1")
+        .redisExecProvider(RedisExecProvider.build()
+            .override(OS.UNIX, "redis-server")
+            .override(OS.MAC_OS_X, "redis-server"))
+        .build();
     redisServer.start();
   }
 
