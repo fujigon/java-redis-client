@@ -22,6 +22,7 @@ import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.lettuce.core.cluster.RedisClusterClient;
 import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
+import io.lettuce.core.cluster.api.async.RedisAdvancedClusterAsyncCommands;
 import io.lettuce.core.cluster.api.sync.RedisAdvancedClusterCommands;
 import io.opentracing.Scope;
 import io.opentracing.Span;
@@ -147,4 +148,52 @@ public class TracingLettuceTest {
     assertEquals(2, spans.size());
   }
 
+  @Test
+  public void async_cluster() throws Exception {
+    RedisClusterClient client = RedisClusterClient.create("redis://localhost");
+
+    StatefulRedisClusterConnection<String, String> connection =
+        new TracingStatefulRedisClusterConnection<>(client.connect(),
+            new TracingConfiguration.Builder(mockTracer).build());
+
+    RedisAdvancedClusterAsyncCommands<String, String> commands = connection.async();
+
+    assertEquals("OK", commands.set("key2", "value2").get(15, TimeUnit.SECONDS));
+
+    assertEquals("value2", commands.get("key2").get(15, TimeUnit.SECONDS));
+
+    connection.close();
+
+    client.shutdown();
+
+    List<MockSpan> spans = mockTracer.finishedSpans();
+    assertEquals(2, spans.size());
+  }
+
+  @Test
+  public void async_cluster_continue_span() throws Exception {
+    try (Scope ignored = mockTracer.buildSpan("test").startActive(true)) {
+      Span activeSpan = mockTracer.activeSpan();
+
+      RedisClusterClient client = RedisClusterClient.create("redis://localhost");
+
+      StatefulRedisClusterConnection<String, String> connection =
+          new TracingStatefulRedisClusterConnection<>(client.connect(),
+              new TracingConfiguration.Builder(mockTracer).build());
+
+      RedisAdvancedClusterAsyncCommands<String, String> commands = connection.async();
+
+      assertEquals("OK",
+          commands.set("key2", "value2").toCompletableFuture().thenApply(s -> {
+            assertSame(activeSpan, mockTracer.activeSpan());
+            return s;
+          }).get(15, TimeUnit.SECONDS));
+
+      connection.close();
+
+      client.shutdown();
+    }
+    List<MockSpan> spans = mockTracer.finishedSpans();
+    assertEquals(2, spans.size());
+  }
 }
