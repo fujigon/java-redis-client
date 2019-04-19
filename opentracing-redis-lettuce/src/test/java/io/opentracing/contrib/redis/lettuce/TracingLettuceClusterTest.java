@@ -26,6 +26,7 @@ import io.opentracing.contrib.redis.common.TracingConfiguration;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.util.ThreadLocalScopeManager;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +43,7 @@ public class TracingLettuceClusterTest {
   private MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
       MockTracer.Propagator.TEXT_MAP);
 
-  private List<RedisServer> redisServers;
+  private List<RedisServer> redisServers = new ArrayList<>();
 
   private RedisCluster redisCluster;
 
