@@ -48,8 +48,7 @@ public class TracingLettuceTest {
 
     redisServer = RedisServer.builder().setting("bind 127.0.0.1")
         .redisExecProvider(RedisExecProvider.build()
-            .override(OS.UNIX, "redis-server")
-            .override(OS.MAC_OS_X, "redis-server"))
+            .override(OS.UNIX, "/usr/bin/redis-server"))
         .build();
     redisServer.start();
   }
