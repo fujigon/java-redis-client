@@ -56,6 +56,7 @@ public class TracingLettuceClusterTest {
           .redisExecProvider(RedisExecProvider.build()
               .override(OS.UNIX, "/usr/bin/redis-server"))
           .port(42000 + i)
+          .setting("cluster-enabled yes")
           .build();
       redisServer.start();
       redisServers.add(redisServer);
