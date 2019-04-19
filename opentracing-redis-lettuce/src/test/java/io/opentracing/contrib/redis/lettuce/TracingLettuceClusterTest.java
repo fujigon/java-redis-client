@@ -51,7 +51,7 @@ public class TracingLettuceClusterTest {
   public void before() {
     mockTracer.reset();
 
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 3; i++) {
       RedisServer redisServer = RedisServer.builder()
           .redisExecProvider(RedisExecProvider.build()
               .override(OS.UNIX, "/usr/bin/redis-server"))
@@ -66,9 +66,9 @@ public class TracingLettuceClusterTest {
         .withServerBuilder(RedisServer.builder().setting("bind 127.0.0.1")
             .redisExecProvider(RedisExecProvider.build()
                 .override(OS.UNIX, "/usr/bin/redis-server")))
-        .serverPorts(Arrays.asList(42000, 42001, 42002, 42003, 42004, 42005))
+        .serverPorts(Arrays.asList(42000, 42001, 42002, 42003))
         .numOfReplicates(1)
-        .numOfRetries(42)
+        .numOfMasters(3)
         .build();
     redisCluster.start();
   }
