@@ -50,10 +50,11 @@ public class TracingLettuceClusterTest {
 
     redisServer = new RedisCluster.Builder()
         .withServerBuilder(
-            RedisServer.builder().setting("bind 127.0.0.1")
+            RedisServer.builder()
+                .port(6379)
                 .redisExecProvider(RedisExecProvider.build()
                     .override(OS.UNIX, "/usr/bin/redis-server")))
-        .serverPorts(Arrays.asList(6379, 42000, 42001, 42002, 42003, 42004))
+        .serverPorts(Arrays.asList(42000, 42001, 42002, 42003, 42004, 42005))
         .numOfReplicates(1)
         .numOfRetries(42)
         .build();
