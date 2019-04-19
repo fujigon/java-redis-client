@@ -53,6 +53,7 @@ public class TracingLettuceClusterTest {
             RedisServer.builder().setting("bind 127.0.0.1")
             .redisExecProvider(RedisExecProvider.build()
                 .override(OS.UNIX, "/usr/bin/redis-server")))
+        .serverPorts(Arrays.asList(6379))
         .build();
     redisServer.start();
   }
