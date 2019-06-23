@@ -16,16 +16,18 @@ package io.opentracing.contrib.redis.lettuce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-import io.lettuce.core.RedisClient;
-import io.lettuce.core.api.StatefulRedisConnection;
-import io.lettuce.core.api.async.RedisAsyncCommands;
-import io.lettuce.core.api.sync.RedisCommands;
+import io.lettuce.core.cluster.RedisClusterClient;
+import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
+import io.lettuce.core.cluster.api.async.RedisAdvancedClusterAsyncCommands;
+import io.lettuce.core.cluster.api.sync.RedisAdvancedClusterCommands;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.contrib.redis.common.TracingConfiguration;
 import io.opentracing.mock.MockSpan;
 import io.opentracing.mock.MockTracer;
 import io.opentracing.util.ThreadLocalScopeManager;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
@@ -33,41 +35,64 @@ import org.junit.Before;
 import org.junit.Test;
 import redis.embedded.RedisExecProvider;
 import redis.embedded.RedisServer;
+import redis.embedded.cluster.RedisCluster;
 import redis.embedded.util.OS;
 
-public class TracingLettuceTest {
+public class TracingLettuceClusterTest {
 
   private MockTracer mockTracer = new MockTracer(new ThreadLocalScopeManager(),
       MockTracer.Propagator.TEXT_MAP);
 
-  private RedisServer redisServer;
+  private List<RedisServer> redisServers = new ArrayList<>();
+
+  private RedisCluster redisCluster;
 
   @Before
   public void before() {
     mockTracer.reset();
 
-    redisServer = RedisServer.builder().setting("bind 127.0.0.1")
-        .redisExecProvider(RedisExecProvider.build()
-            .override(OS.UNIX, "/usr/bin/redis-server"))
+    for (int i = 0; i < 3; i++) {
+      RedisServer redisServer = RedisServer.builder()
+          .redisExecProvider(RedisExecProvider.build()
+              .override(OS.UNIX, "/usr/bin/redis-server"))
+          .port(42000 + i)
+          .setting("cluster-enabled yes")
+          .build();
+      redisServer.start();
+      redisServers.add(redisServer);
+    }
+
+    redisCluster = new RedisCluster.Builder()
+        .withServerBuilder(RedisServer.builder().setting("bind 127.0.0.1")
+            .redisExecProvider(RedisExecProvider.build()
+                .override(OS.UNIX, "/usr/bin/redis-server")))
+        .serverPorts(Arrays.asList(42000, 42001, 42002, 42003))
+        .numOfReplicates(1)
+        .numOfMasters(3)
         .build();
-    redisServer.start();
+    redisCluster.start();
   }
 
   @After
   public void after() {
-    if (redisServer != null) {
-      redisServer.stop();
+    if (redisServers != null) {
+      for (RedisServer redisServer : redisServers) {
+        redisServer.stop();
+      }
+    }
+    if (redisCluster != null) {
+      redisCluster.stop();
     }
   }
 
   @Test
-  public void sync() {
-    RedisClient client = RedisClient.create("redis://localhost");
+  public void sync_cluster() {
+    RedisClusterClient client = RedisClusterClient.create("redis://localhost");
 
-    StatefulRedisConnection<String, String> connection =
-        new TracingStatefulRedisConnection<>(client.connect(),
+    StatefulRedisClusterConnection<String, String> connection =
+        new TracingStatefulRedisClusterConnection<>(client.connect(),
             new TracingConfiguration.Builder(mockTracer).build());
-    RedisCommands<String, String> commands = connection.sync();
+    RedisAdvancedClusterCommands<String, String> commands = connection.sync();
 
     assertEquals("OK", commands.set("key", "value"));
     assertEquals("value", commands.get("key"));
@@ -81,14 +106,14 @@ public class TracingLettuceTest {
   }
 
   @Test
-  public void async() throws Exception {
-    RedisClient client = RedisClient.create("redis://localhost");
+  public void async_cluster() throws Exception {
+    RedisClusterClient client = RedisClusterClient.create("redis://localhost");
 
-    StatefulRedisConnection<String, String> connection =
-        new TracingStatefulRedisConnection<>(client.connect(),
+    StatefulRedisClusterConnection<String, String> connection =
+        new TracingStatefulRedisClusterConnection<>(client.connect(),
             new TracingConfiguration.Builder(mockTracer).build());
 
-    RedisAsyncCommands<String, String> commands = connection.async();
+    RedisAdvancedClusterAsyncCommands<String, String> commands = connection.async();
 
     assertEquals("OK", commands.set("key2", "value2").get(15, TimeUnit.SECONDS));
 
@@ -103,17 +128,17 @@ public class TracingLettuceTest {
   }
 
   @Test
-  public void async_continue_span() throws Exception {
+  public void async_cluster_continue_span() throws Exception {
     try (Scope ignored = mockTracer.buildSpan("test").startActive(true)) {
       Span activeSpan = mockTracer.activeSpan();
 
-      RedisClient client = RedisClient.create("redis://localhost");
+      RedisClusterClient client = RedisClusterClient.create("redis://localhost");
 
-      StatefulRedisConnection<String, String> connection =
-          new TracingStatefulRedisConnection<>(client.connect(),
+      StatefulRedisClusterConnection<String, String> connection =
+          new TracingStatefulRedisClusterConnection<>(client.connect(),
               new TracingConfiguration.Builder(mockTracer).build());
 
-      RedisAsyncCommands<String, String> commands = connection.async();
+      RedisAdvancedClusterAsyncCommands<String, String> commands = connection.async();
 
       assertEquals("OK",
           commands.set("key2", "value2").toCompletableFuture().thenApply(s -> {
@@ -128,4 +153,5 @@ public class TracingLettuceTest {
     List<MockSpan> spans = mockTracer.finishedSpans();
     assertEquals(2, spans.size());
   }
+
 }

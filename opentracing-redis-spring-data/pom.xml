@@ -75,7 +75,7 @@
     </dependency>
 
     <dependency>
-      <groupId>com.github.kstyrc</groupId>
+      <groupId>eu.monniot.redis</groupId>
       <artifactId>embedded-redis</artifactId>
       <scope>test</scope>
     </dependency>

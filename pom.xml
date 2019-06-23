@@ -86,9 +86,9 @@
       </dependency>
 
       <dependency>
-        <groupId>com.github.kstyrc</groupId>
+        <groupId>eu.monniot.redis</groupId>
         <artifactId>embedded-redis</artifactId>
-        <version>0.6</version>
+        <version>1.6.0</version>
         <scope>test</scope>
       </dependency>
 
@@ -226,6 +226,14 @@
       <url>http://oss.jfrog.org/artifactory/oss-snapshot-local</url>
     </snapshotRepository>
   </distributionManagement>
+
+  <repositories>
+    <!-- use spring repository -->
+    <repository>
+      <id>spring-repository</id>
+      <url>http://repo.spring.io/plugins-release/</url>
+    </repository>
+  </repositories>
 
   <profiles>
     <profile>
